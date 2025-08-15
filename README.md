@@ -30,9 +30,15 @@ The system consists of 7 processes running on localhost:
    - gRPC RPCs: Events (stream), Enable, Disable
    - Health check implementation
 
+3. **STT Service** (port 5004)
+   - Whisper integration (small.en model)
+   - WebRTC VAD for automatic finalization (~2s silence)
+   - CUDA acceleration for fast transcription
+   - gRPC RPCs: Start, Stop, Results (stream)
+   - Multi-session support for concurrent dialogs
+
 ### 🚧 Services To Build
 
-3. **STT Service** (port 5004) - Whisper integration
 4. **LLM Service** (port 5005) - Ollama bridge
 5. **TTS Service** (port 5006) - Kokoro integration
 6. **Loader Service** (port 5002) - Phased orchestration
@@ -110,6 +116,21 @@ python manage_services.py start kwd
 python tests/test_kwd.py
 
 # Say "Alexa" to trigger wake word detection
+```
+
+#### Test STT Service
+```bash
+# Start STT service (and logger)
+python manage_services.py start logger
+python manage_services.py start stt
+
+# Run test client
+python tests/test_stt.py
+
+# Speak after the prompt - recognition finalizes after 2s of silence
+
+# Test continuous recognition
+python tests/test_stt.py --continuous
 ```
 
 ## Service Logs

@@ -69,7 +69,9 @@ def start_service(service_key):
     
     # Start the service
     print(f"Starting {service['name']}...", end=' ')
-    log_file = f"{service_key}_service.log"
+    # Ensure logs directory exists
+    Path('logs').mkdir(exist_ok=True)
+    log_file = f"logs/{service_key}_service.log"
     
     try:
         # Use the virtual environment's Python
@@ -139,14 +141,18 @@ def status_service(service_key):
 def start_all():
     """Start all services in order."""
     print("Starting all services...")
-    order = ['logger', 'kwd', 'stt', 'llm', 'tts']  # loader would start these
+    # Only start services that are implemented
+    order = ['logger', 'kwd', 'stt']  # llm and tts not yet implemented
     
     for service in order:
         if service in SERVICES:
-            start_service(service)
-            time.sleep(1)
+            if Path(SERVICES[service]['script']).exists():
+                start_service(service)
+                time.sleep(1)
+            else:
+                print(f"⚠ {SERVICES[service]['name']} not yet implemented")
     
-    print("\nAll services started!")
+    print("\nAll available services started!")
 
 
 def stop_all():

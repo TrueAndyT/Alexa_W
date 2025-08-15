@@ -13,7 +13,7 @@ nvidia-ml-py3==7.352.0
 
 # Audio processing
 sounddevice==0.5.2
-numpy==2.3.2
+numpy==2.2.6
 scipy==1.16.1
 
 # Wake word detection
@@ -24,3 +24,15 @@ tqdm==4.67.1
 # Additional dependencies for OpenWakeWord
 scikit-learn==1.7.1
 requests==2.32.4
+
+# Speech-to-text (Whisper)
+openai-whisper==20250625
+torch==2.8.0
+torchaudio==2.8.0
+webrtcvad==2.0.10
+
+# LLM Service
+aiohttp==3.12.15
+
+# TTS Service (placeholder dependencies)
+# In production, would include actual TTS engine like Kokoro

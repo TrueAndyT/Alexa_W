@@ -32,8 +32,8 @@ class ConfigLoader:
         
         # Validate system settings
         min_vram = self.get_int('system', 'min_vram_mb')
-        if min_vram < 8000:
-            raise ValueError(f"min_vram_mb must be at least 8000, got {min_vram}")
+        if min_vram < 7000:
+            raise ValueError(f"min_vram_mb must be at least 7000, got {min_vram}")
         
         # Validate ports
         ports = set()

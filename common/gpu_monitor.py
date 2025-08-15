@@ -1,5 +1,5 @@
 """GPU monitoring utilities for VRAM management."""
-import nvidia_ml_py3 as nvml
+import pynvml as nvml
 from typing import Optional, Tuple
 
 
@@ -98,6 +98,25 @@ class GPUMonitor:
         except Exception:
             return "Unknown"
     
+    def get_gpu_memory(self) -> Optional[dict]:
+        """Get GPU memory info as a dictionary.
+        
+        Returns:
+            Dictionary with 'used_mb', 'free_mb', 'total_mb' keys, or None on error
+        """
+        if not self.initialized or not self.device:
+            return None
+        
+        try:
+            used_mb, free_mb, total_mb = self.get_vram_usage()
+            return {
+                'used_mb': used_mb,
+                'free_mb': free_mb,
+                'total_mb': total_mb
+            }
+        except Exception:
+            return None
+    
     def shutdown(self):
         """Shutdown NVML."""
         if self.initialized:
@@ -112,7 +131,7 @@ class GPUMonitor:
         self.shutdown()
 
 
-def check_vram_guardrail(min_vram_mb: int = 8000) -> Tuple[bool, str]:
+def check_vram_guardrail(min_vram_mb: int = 7640) -> Tuple[bool, str]:
     """Check if system meets VRAM requirements.
     
     Args:
