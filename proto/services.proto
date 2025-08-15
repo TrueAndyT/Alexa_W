@@ -1,0 +1,160 @@
+syntax = "proto3";
+
+package alexa;
+
+// Common Messages
+message Empty {}
+
+message Status {
+  bool success = 1;
+  string message = 2;
+  int32 code = 3;
+}
+
+message DialogRef {
+  string dialog_id = 1;
+  int32 turn_number = 2;
+}
+
+// Logger Service
+service LoggerService {
+  rpc WriteApp(AppLogRequest) returns (Status);
+  rpc NewDialog(NewDialogRequest) returns (DialogResponse);
+  rpc WriteDialog(DialogLogRequest) returns (Status);
+}
+
+message AppLogRequest {
+  string service = 1;
+  string event = 2;
+  string message = 3;
+  string level = 4; // INFO, WARN, ERROR, FATAL
+  int64 timestamp_ms = 5;
+}
+
+message NewDialogRequest {
+  int64 timestamp_ms = 1;
+}
+
+message DialogResponse {
+  string dialog_id = 1;
+  string file_path = 2;
+}
+
+message DialogLogRequest {
+  string dialog_id = 1;
+  string speaker = 2; // USER or ASSISTANT
+  string text = 3;
+  int64 timestamp_ms = 4;
+}
+
+// TTS Service
+service TtsService {
+  rpc Speak(SpeakRequest) returns (SpeakResponse);
+  rpc SpeakStream(stream LlmChunk) returns (SpeakResponse);
+  rpc PlaybackEvents(DialogRef) returns (stream PlaybackEvent);
+}
+
+message SpeakRequest {
+  string text = 1;
+  string dialog_id = 2;
+  string voice = 3;
+}
+
+message SpeakResponse {
+  bool success = 1;
+  string message = 2;
+  float duration_ms = 3;
+}
+
+message LlmChunk {
+  string text = 1;
+  bool eot = 2; // end of text
+  string dialog_id = 3;
+}
+
+message PlaybackEvent {
+  string event_type = 1; // started, chunk_played, finished
+  int64 timestamp_ms = 2;
+  int32 chunk_number = 3;
+  string dialog_id = 4;
+}
+
+// LLM Service
+service LlmService {
+  rpc Complete(CompleteRequest) returns (stream CompleteResponse);
+}
+
+message CompleteRequest {
+  string text = 1;
+  string dialog_id = 2;
+  int32 turn_number = 3;
+  string conversation_history = 4;
+}
+
+message CompleteResponse {
+  string text = 1;
+  bool eot = 2; // end of text
+  int32 token_count = 3;
+  float latency_ms = 4;
+}
+
+// STT Service
+service SttService {
+  rpc Start(StartRequest) returns (Status);
+  rpc Stop(StopRequest) returns (Status);
+  rpc Results(DialogRef) returns (stream SttResult);
+}
+
+message StartRequest {
+  string dialog_id = 1;
+  int32 turn_number = 2;
+}
+
+message StopRequest {
+  string dialog_id = 1;
+}
+
+message SttResult {
+  string text = 1;
+  bool final = 2;
+  float confidence = 3;
+  int64 timestamp_ms = 4;
+  string dialog_id = 5;
+}
+
+// KWD Service
+service KwdService {
+  rpc Events(Empty) returns (stream WakeEvent);
+  rpc Enable(Empty) returns (Status);
+  rpc Disable(Empty) returns (Status);
+}
+
+message WakeEvent {
+  float confidence = 1;
+  int64 timestamp_ms = 2;
+  string wake_word = 3;
+  string dialog_id = 4;
+}
+
+// Loader Service
+service LoaderService {
+  rpc StartService(ServiceRequest) returns (Status);
+  rpc StopService(ServiceRequest) returns (Status);
+  rpc GetPids(Empty) returns (PidsResponse);
+  rpc GetStatus(Empty) returns (SystemStatus);
+}
+
+message ServiceRequest {
+  string service_name = 1;
+}
+
+message PidsResponse {
+  map<string, int32> pids = 1;
+}
+
+message SystemStatus {
+  string state = 1; // INITIALIZING, PHASE_1, PHASE_2, PHASE_3, IDLE, DIALOG
+  map<string, string> service_health = 2;
+  int64 vram_used_mb = 3;
+  int64 uptime_ms = 4;
+}
