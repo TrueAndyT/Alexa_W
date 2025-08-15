@@ -1,0 +1,26 @@
+# Core dependencies
+grpcio==1.74.0
+grpcio-tools==1.74.0
+grpcio-health-checking==1.74.0
+
+# Configuration and utilities
+pyyaml==6.0.2
+aiofiles==24.1.0
+psutil==7.0.0
+
+# GPU monitoring
+nvidia-ml-py3==7.352.0
+
+# Audio processing
+sounddevice==0.5.2
+numpy==2.3.2
+scipy==1.16.1
+
+# Wake word detection
+onnxruntime==1.22.1
+openwakeword==0.6.0
+tqdm==4.67.1
+
+# Additional dependencies for OpenWakeWord
+scikit-learn==1.7.1
+requests==2.32.4
