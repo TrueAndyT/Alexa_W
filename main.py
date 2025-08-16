@@ -8,11 +8,10 @@ import subprocess
 from pathlib import Path
 import logging
 
-# Setup logging
+# Setup logging with minimal format since logger service will handle formatting
 logging.basicConfig(
     level=logging.INFO,
-    format='[MAIN] %(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format='MAIN      %(levelname)-6s= %(message)s'
 )
 logger = logging.getLogger(__name__)
 
@@ -106,19 +105,18 @@ class Bootstrap:
         
         # Use virtual environment Python
         venv_python = Path('.venv/bin/python').absolute()
-        loader_script = Path('services/loader/loader_service.py')
+        loader_script = Path('services/loader_service.py')
         
         if not loader_script.exists():
             logger.error(f"Loader script not found: {loader_script}")
             return False
             
         try:
-            # Start loader process
-            log_file = open('loader_service.log', 'w')
+            # Start loader process with output to console
             self.loader_process = subprocess.Popen(
                 [str(venv_python), str(loader_script)],
-                stdout=log_file,
-                stderr=subprocess.STDOUT
+                stdout=None,  # Inherit stdout - logs will appear in console
+                stderr=None   # Inherit stderr - errors will appear in console
             )
             
             logger.info(f"Loader started (PID: {self.loader_process.pid})")

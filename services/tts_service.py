@@ -5,16 +5,21 @@ import time
 import grpc
 import queue
 import threading
+import warnings
 import numpy as np
 from pathlib import Path
 from typing import Optional, Iterator, Generator
 import logging
 from concurrent import futures
 import sounddevice as sd
+
+# Suppress torch RNN dropout and weight_norm deprecation warnings
+warnings.filterwarnings("ignore", message="dropout option adds dropout after all but last recurrent layer")
+warnings.filterwarnings("ignore", message="torch.nn.utils.weight_norm is deprecated")
 import torch
 
 # Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from proto import services_pb2, services_pb2_grpc
 from common.base_service import BaseService
@@ -50,8 +55,39 @@ class KokoroTTSEngine:
             try:
                 # Initialize Kokoro pipeline
                 self.logger.info(f"Loading Kokoro model for voice: {voice}, lang: {lang_code}")
-                self.pipeline = KPipeline(lang_code=lang_code)
-                self.logger.info("Kokoro model loaded successfully")
+                
+                # Try CUDA first if requested
+                if device == "cuda" and torch.cuda.is_available():
+                    try:
+                        # Explicitly specify repo_id to suppress warning
+                        self.pipeline = KPipeline(
+                            repo_id="hexgrad/Kokoro-82M",
+                            lang_code=lang_code, 
+                            device="cuda"
+                        )
+                        self.logger.info("Kokoro model loaded successfully on CUDA")
+                    except (torch.cuda.OutOfMemoryError, RuntimeError) as cuda_error:
+                        if "out of memory" in str(cuda_error).lower():
+                            self.logger.warning(f"CUDA out of memory, falling back to CPU: {cuda_error}")
+                            # Clear CUDA cache and try CPU
+                            torch.cuda.empty_cache()
+                            self.pipeline = KPipeline(
+                                repo_id="hexgrad/Kokoro-82M",
+                                lang_code=lang_code, 
+                                device="cpu"
+                            )
+                            self.logger.info("Kokoro model loaded successfully on CPU")
+                        else:
+                            raise
+                else:
+                    # Use CPU directly
+                    self.pipeline = KPipeline(
+                        repo_id="hexgrad/Kokoro-82M",
+                        lang_code=lang_code, 
+                        device="cpu"
+                    )
+                    self.logger.info(f"Kokoro model loaded successfully on CPU")
+                    
             except Exception as e:
                 self.logger.error(f"Failed to load Kokoro model: {e}")
                 self.pipeline = None
@@ -243,6 +279,22 @@ class TTSServicer(services_pb2_grpc.TtsServiceServicer):
         self.events_lock = threading.Lock()
         
         self.logger.info(f"TTS service initialized with voice: {self.voice}")
+    
+    def Configure(self, request, context):
+        """Configure TTS service."""
+        if request.voice:
+            self.voice = request.voice
+            # Reinitialize TTS engine with new voice if needed
+        if request.sample_rate > 0:
+            self.sample_rate = request.sample_rate
+        if request.speed > 0:
+            # Update TTS engine speed if supported
+            pass
+        
+        return services_pb2.Status(
+            success=True,
+            message="TTS configured"
+        )
         
     def Speak(self, request, context):
         """Synthesize and play text (unary call)."""
@@ -433,7 +485,7 @@ class TTSService(BaseService):
         try:
             # Connect to logger service
             self.logger.info("Connecting to Logger service...")
-            self.logger_channel = grpc.insecure_channel('127.0.0.1:5001')
+            self.logger_channel = grpc.insecure_channel('localhost:5001')
             self.logger_stub = services_pb2_grpc.LoggerServiceStub(self.logger_channel)
             
             # Log startup

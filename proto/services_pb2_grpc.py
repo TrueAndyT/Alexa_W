@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from . import services_pb2 as services__pb2
+from proto import services_pb2 as proto_dot_services__pb2
 
 GRPC_GENERATED_VERSION = '1.74.0'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in services_pb2_grpc.py depends on'
+        + f' but the generated code in proto/services_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -37,18 +37,18 @@ class LoggerServiceStub(object):
         """
         self.WriteApp = channel.unary_unary(
                 '/alexa.LoggerService/WriteApp',
-                request_serializer=services__pb2.AppLogRequest.SerializeToString,
-                response_deserializer=services__pb2.Status.FromString,
+                request_serializer=proto_dot_services__pb2.AppLogRequest.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
                 _registered_method=True)
         self.NewDialog = channel.unary_unary(
                 '/alexa.LoggerService/NewDialog',
-                request_serializer=services__pb2.NewDialogRequest.SerializeToString,
-                response_deserializer=services__pb2.DialogResponse.FromString,
+                request_serializer=proto_dot_services__pb2.NewDialogRequest.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.DialogResponse.FromString,
                 _registered_method=True)
         self.WriteDialog = channel.unary_unary(
                 '/alexa.LoggerService/WriteDialog',
-                request_serializer=services__pb2.DialogLogRequest.SerializeToString,
-                response_deserializer=services__pb2.Status.FromString,
+                request_serializer=proto_dot_services__pb2.DialogLogRequest.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
                 _registered_method=True)
 
 
@@ -79,18 +79,18 @@ def add_LoggerServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'WriteApp': grpc.unary_unary_rpc_method_handler(
                     servicer.WriteApp,
-                    request_deserializer=services__pb2.AppLogRequest.FromString,
-                    response_serializer=services__pb2.Status.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.AppLogRequest.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
             ),
             'NewDialog': grpc.unary_unary_rpc_method_handler(
                     servicer.NewDialog,
-                    request_deserializer=services__pb2.NewDialogRequest.FromString,
-                    response_serializer=services__pb2.DialogResponse.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.NewDialogRequest.FromString,
+                    response_serializer=proto_dot_services__pb2.DialogResponse.SerializeToString,
             ),
             'WriteDialog': grpc.unary_unary_rpc_method_handler(
                     servicer.WriteDialog,
-                    request_deserializer=services__pb2.DialogLogRequest.FromString,
-                    response_serializer=services__pb2.Status.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.DialogLogRequest.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -119,8 +119,8 @@ class LoggerService(object):
             request,
             target,
             '/alexa.LoggerService/WriteApp',
-            services__pb2.AppLogRequest.SerializeToString,
-            services__pb2.Status.FromString,
+            proto_dot_services__pb2.AppLogRequest.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
             options,
             channel_credentials,
             insecure,
@@ -146,8 +146,8 @@ class LoggerService(object):
             request,
             target,
             '/alexa.LoggerService/NewDialog',
-            services__pb2.NewDialogRequest.SerializeToString,
-            services__pb2.DialogResponse.FromString,
+            proto_dot_services__pb2.NewDialogRequest.SerializeToString,
+            proto_dot_services__pb2.DialogResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -173,8 +173,8 @@ class LoggerService(object):
             request,
             target,
             '/alexa.LoggerService/WriteDialog',
-            services__pb2.DialogLogRequest.SerializeToString,
-            services__pb2.Status.FromString,
+            proto_dot_services__pb2.DialogLogRequest.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
             options,
             channel_credentials,
             insecure,
@@ -196,26 +196,37 @@ class TtsServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.Configure = channel.unary_unary(
+                '/alexa.TtsService/Configure',
+                request_serializer=proto_dot_services__pb2.TtsConfig.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
+                _registered_method=True)
         self.Speak = channel.unary_unary(
                 '/alexa.TtsService/Speak',
-                request_serializer=services__pb2.SpeakRequest.SerializeToString,
-                response_deserializer=services__pb2.SpeakResponse.FromString,
+                request_serializer=proto_dot_services__pb2.SpeakRequest.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.SpeakResponse.FromString,
                 _registered_method=True)
         self.SpeakStream = channel.stream_unary(
                 '/alexa.TtsService/SpeakStream',
-                request_serializer=services__pb2.LlmChunk.SerializeToString,
-                response_deserializer=services__pb2.SpeakResponse.FromString,
+                request_serializer=proto_dot_services__pb2.LlmChunk.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.SpeakResponse.FromString,
                 _registered_method=True)
         self.PlaybackEvents = channel.unary_stream(
                 '/alexa.TtsService/PlaybackEvents',
-                request_serializer=services__pb2.DialogRef.SerializeToString,
-                response_deserializer=services__pb2.PlaybackEvent.FromString,
+                request_serializer=proto_dot_services__pb2.DialogRef.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.PlaybackEvent.FromString,
                 _registered_method=True)
 
 
 class TtsServiceServicer(object):
     """TTS Service
     """
+
+    def Configure(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def Speak(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -238,20 +249,25 @@ class TtsServiceServicer(object):
 
 def add_TtsServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'Configure': grpc.unary_unary_rpc_method_handler(
+                    servicer.Configure,
+                    request_deserializer=proto_dot_services__pb2.TtsConfig.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
+            ),
             'Speak': grpc.unary_unary_rpc_method_handler(
                     servicer.Speak,
-                    request_deserializer=services__pb2.SpeakRequest.FromString,
-                    response_serializer=services__pb2.SpeakResponse.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.SpeakRequest.FromString,
+                    response_serializer=proto_dot_services__pb2.SpeakResponse.SerializeToString,
             ),
             'SpeakStream': grpc.stream_unary_rpc_method_handler(
                     servicer.SpeakStream,
-                    request_deserializer=services__pb2.LlmChunk.FromString,
-                    response_serializer=services__pb2.SpeakResponse.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.LlmChunk.FromString,
+                    response_serializer=proto_dot_services__pb2.SpeakResponse.SerializeToString,
             ),
             'PlaybackEvents': grpc.unary_stream_rpc_method_handler(
                     servicer.PlaybackEvents,
-                    request_deserializer=services__pb2.DialogRef.FromString,
-                    response_serializer=services__pb2.PlaybackEvent.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.DialogRef.FromString,
+                    response_serializer=proto_dot_services__pb2.PlaybackEvent.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -264,6 +280,33 @@ def add_TtsServiceServicer_to_server(servicer, server):
 class TtsService(object):
     """TTS Service
     """
+
+    @staticmethod
+    def Configure(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/alexa.TtsService/Configure',
+            proto_dot_services__pb2.TtsConfig.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def Speak(request,
@@ -280,8 +323,8 @@ class TtsService(object):
             request,
             target,
             '/alexa.TtsService/Speak',
-            services__pb2.SpeakRequest.SerializeToString,
-            services__pb2.SpeakResponse.FromString,
+            proto_dot_services__pb2.SpeakRequest.SerializeToString,
+            proto_dot_services__pb2.SpeakResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -307,8 +350,8 @@ class TtsService(object):
             request_iterator,
             target,
             '/alexa.TtsService/SpeakStream',
-            services__pb2.LlmChunk.SerializeToString,
-            services__pb2.SpeakResponse.FromString,
+            proto_dot_services__pb2.LlmChunk.SerializeToString,
+            proto_dot_services__pb2.SpeakResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -334,8 +377,8 @@ class TtsService(object):
             request,
             target,
             '/alexa.TtsService/PlaybackEvents',
-            services__pb2.DialogRef.SerializeToString,
-            services__pb2.PlaybackEvent.FromString,
+            proto_dot_services__pb2.DialogRef.SerializeToString,
+            proto_dot_services__pb2.PlaybackEvent.FromString,
             options,
             channel_credentials,
             insecure,
@@ -357,16 +400,27 @@ class LlmServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.Configure = channel.unary_unary(
+                '/alexa.LlmService/Configure',
+                request_serializer=proto_dot_services__pb2.LlmConfig.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
+                _registered_method=True)
         self.Complete = channel.unary_stream(
                 '/alexa.LlmService/Complete',
-                request_serializer=services__pb2.CompleteRequest.SerializeToString,
-                response_deserializer=services__pb2.CompleteResponse.FromString,
+                request_serializer=proto_dot_services__pb2.CompleteRequest.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.CompleteResponse.FromString,
                 _registered_method=True)
 
 
 class LlmServiceServicer(object):
     """LLM Service
     """
+
+    def Configure(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def Complete(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -377,10 +431,15 @@ class LlmServiceServicer(object):
 
 def add_LlmServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'Configure': grpc.unary_unary_rpc_method_handler(
+                    servicer.Configure,
+                    request_deserializer=proto_dot_services__pb2.LlmConfig.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
+            ),
             'Complete': grpc.unary_stream_rpc_method_handler(
                     servicer.Complete,
-                    request_deserializer=services__pb2.CompleteRequest.FromString,
-                    response_serializer=services__pb2.CompleteResponse.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.CompleteRequest.FromString,
+                    response_serializer=proto_dot_services__pb2.CompleteResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -393,6 +452,33 @@ def add_LlmServiceServicer_to_server(servicer, server):
 class LlmService(object):
     """LLM Service
     """
+
+    @staticmethod
+    def Configure(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/alexa.LlmService/Configure',
+            proto_dot_services__pb2.LlmConfig.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def Complete(request,
@@ -409,8 +495,8 @@ class LlmService(object):
             request,
             target,
             '/alexa.LlmService/Complete',
-            services__pb2.CompleteRequest.SerializeToString,
-            services__pb2.CompleteResponse.FromString,
+            proto_dot_services__pb2.CompleteRequest.SerializeToString,
+            proto_dot_services__pb2.CompleteResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -432,26 +518,37 @@ class SttServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.Configure = channel.unary_unary(
+                '/alexa.SttService/Configure',
+                request_serializer=proto_dot_services__pb2.SttConfig.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
+                _registered_method=True)
         self.Start = channel.unary_unary(
                 '/alexa.SttService/Start',
-                request_serializer=services__pb2.StartRequest.SerializeToString,
-                response_deserializer=services__pb2.Status.FromString,
+                request_serializer=proto_dot_services__pb2.StartRequest.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
                 _registered_method=True)
         self.Stop = channel.unary_unary(
                 '/alexa.SttService/Stop',
-                request_serializer=services__pb2.StopRequest.SerializeToString,
-                response_deserializer=services__pb2.Status.FromString,
+                request_serializer=proto_dot_services__pb2.StopRequest.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
                 _registered_method=True)
         self.Results = channel.unary_stream(
                 '/alexa.SttService/Results',
-                request_serializer=services__pb2.DialogRef.SerializeToString,
-                response_deserializer=services__pb2.SttResult.FromString,
+                request_serializer=proto_dot_services__pb2.DialogRef.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.SttResult.FromString,
                 _registered_method=True)
 
 
 class SttServiceServicer(object):
     """STT Service
     """
+
+    def Configure(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def Start(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -474,20 +571,25 @@ class SttServiceServicer(object):
 
 def add_SttServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'Configure': grpc.unary_unary_rpc_method_handler(
+                    servicer.Configure,
+                    request_deserializer=proto_dot_services__pb2.SttConfig.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
+            ),
             'Start': grpc.unary_unary_rpc_method_handler(
                     servicer.Start,
-                    request_deserializer=services__pb2.StartRequest.FromString,
-                    response_serializer=services__pb2.Status.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.StartRequest.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
             ),
             'Stop': grpc.unary_unary_rpc_method_handler(
                     servicer.Stop,
-                    request_deserializer=services__pb2.StopRequest.FromString,
-                    response_serializer=services__pb2.Status.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.StopRequest.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
             ),
             'Results': grpc.unary_stream_rpc_method_handler(
                     servicer.Results,
-                    request_deserializer=services__pb2.DialogRef.FromString,
-                    response_serializer=services__pb2.SttResult.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.DialogRef.FromString,
+                    response_serializer=proto_dot_services__pb2.SttResult.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -500,6 +602,33 @@ def add_SttServiceServicer_to_server(servicer, server):
 class SttService(object):
     """STT Service
     """
+
+    @staticmethod
+    def Configure(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/alexa.SttService/Configure',
+            proto_dot_services__pb2.SttConfig.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def Start(request,
@@ -516,8 +645,8 @@ class SttService(object):
             request,
             target,
             '/alexa.SttService/Start',
-            services__pb2.StartRequest.SerializeToString,
-            services__pb2.Status.FromString,
+            proto_dot_services__pb2.StartRequest.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
             options,
             channel_credentials,
             insecure,
@@ -543,8 +672,8 @@ class SttService(object):
             request,
             target,
             '/alexa.SttService/Stop',
-            services__pb2.StopRequest.SerializeToString,
-            services__pb2.Status.FromString,
+            proto_dot_services__pb2.StopRequest.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
             options,
             channel_credentials,
             insecure,
@@ -570,8 +699,8 @@ class SttService(object):
             request,
             target,
             '/alexa.SttService/Results',
-            services__pb2.DialogRef.SerializeToString,
-            services__pb2.SttResult.FromString,
+            proto_dot_services__pb2.DialogRef.SerializeToString,
+            proto_dot_services__pb2.SttResult.FromString,
             options,
             channel_credentials,
             insecure,
@@ -593,20 +722,25 @@ class KwdServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.Configure = channel.unary_unary(
+                '/alexa.KwdService/Configure',
+                request_serializer=proto_dot_services__pb2.KwdConfig.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
+                _registered_method=True)
+        self.Start = channel.unary_unary(
+                '/alexa.KwdService/Start',
+                request_serializer=proto_dot_services__pb2.Empty.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
+                _registered_method=True)
+        self.Stop = channel.unary_unary(
+                '/alexa.KwdService/Stop',
+                request_serializer=proto_dot_services__pb2.Empty.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
+                _registered_method=True)
         self.Events = channel.unary_stream(
                 '/alexa.KwdService/Events',
-                request_serializer=services__pb2.Empty.SerializeToString,
-                response_deserializer=services__pb2.WakeEvent.FromString,
-                _registered_method=True)
-        self.Enable = channel.unary_unary(
-                '/alexa.KwdService/Enable',
-                request_serializer=services__pb2.Empty.SerializeToString,
-                response_deserializer=services__pb2.Status.FromString,
-                _registered_method=True)
-        self.Disable = channel.unary_unary(
-                '/alexa.KwdService/Disable',
-                request_serializer=services__pb2.Empty.SerializeToString,
-                response_deserializer=services__pb2.Status.FromString,
+                request_serializer=proto_dot_services__pb2.Empty.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.WakeEvent.FromString,
                 _registered_method=True)
 
 
@@ -614,19 +748,25 @@ class KwdServiceServicer(object):
     """KWD Service
     """
 
+    def Configure(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Start(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Stop(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def Events(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def Enable(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def Disable(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -635,20 +775,25 @@ class KwdServiceServicer(object):
 
 def add_KwdServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'Configure': grpc.unary_unary_rpc_method_handler(
+                    servicer.Configure,
+                    request_deserializer=proto_dot_services__pb2.KwdConfig.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
+            ),
+            'Start': grpc.unary_unary_rpc_method_handler(
+                    servicer.Start,
+                    request_deserializer=proto_dot_services__pb2.Empty.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
+            ),
+            'Stop': grpc.unary_unary_rpc_method_handler(
+                    servicer.Stop,
+                    request_deserializer=proto_dot_services__pb2.Empty.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
+            ),
             'Events': grpc.unary_stream_rpc_method_handler(
                     servicer.Events,
-                    request_deserializer=services__pb2.Empty.FromString,
-                    response_serializer=services__pb2.WakeEvent.SerializeToString,
-            ),
-            'Enable': grpc.unary_unary_rpc_method_handler(
-                    servicer.Enable,
-                    request_deserializer=services__pb2.Empty.FromString,
-                    response_serializer=services__pb2.Status.SerializeToString,
-            ),
-            'Disable': grpc.unary_unary_rpc_method_handler(
-                    servicer.Disable,
-                    request_deserializer=services__pb2.Empty.FromString,
-                    response_serializer=services__pb2.Status.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.Empty.FromString,
+                    response_serializer=proto_dot_services__pb2.WakeEvent.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -661,6 +806,87 @@ def add_KwdServiceServicer_to_server(servicer, server):
 class KwdService(object):
     """KWD Service
     """
+
+    @staticmethod
+    def Configure(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/alexa.KwdService/Configure',
+            proto_dot_services__pb2.KwdConfig.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Start(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/alexa.KwdService/Start',
+            proto_dot_services__pb2.Empty.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Stop(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/alexa.KwdService/Stop',
+            proto_dot_services__pb2.Empty.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def Events(request,
@@ -677,62 +903,8 @@ class KwdService(object):
             request,
             target,
             '/alexa.KwdService/Events',
-            services__pb2.Empty.SerializeToString,
-            services__pb2.WakeEvent.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def Enable(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/alexa.KwdService/Enable',
-            services__pb2.Empty.SerializeToString,
-            services__pb2.Status.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def Disable(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/alexa.KwdService/Disable',
-            services__pb2.Empty.SerializeToString,
-            services__pb2.Status.FromString,
+            proto_dot_services__pb2.Empty.SerializeToString,
+            proto_dot_services__pb2.WakeEvent.FromString,
             options,
             channel_credentials,
             insecure,
@@ -756,23 +928,23 @@ class LoaderServiceStub(object):
         """
         self.StartService = channel.unary_unary(
                 '/alexa.LoaderService/StartService',
-                request_serializer=services__pb2.ServiceRequest.SerializeToString,
-                response_deserializer=services__pb2.Status.FromString,
+                request_serializer=proto_dot_services__pb2.ServiceRequest.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
                 _registered_method=True)
         self.StopService = channel.unary_unary(
                 '/alexa.LoaderService/StopService',
-                request_serializer=services__pb2.ServiceRequest.SerializeToString,
-                response_deserializer=services__pb2.Status.FromString,
+                request_serializer=proto_dot_services__pb2.ServiceRequest.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.Status.FromString,
                 _registered_method=True)
         self.GetPids = channel.unary_unary(
                 '/alexa.LoaderService/GetPids',
-                request_serializer=services__pb2.Empty.SerializeToString,
-                response_deserializer=services__pb2.PidsResponse.FromString,
+                request_serializer=proto_dot_services__pb2.Empty.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.PidsResponse.FromString,
                 _registered_method=True)
         self.GetStatus = channel.unary_unary(
                 '/alexa.LoaderService/GetStatus',
-                request_serializer=services__pb2.Empty.SerializeToString,
-                response_deserializer=services__pb2.SystemStatus.FromString,
+                request_serializer=proto_dot_services__pb2.Empty.SerializeToString,
+                response_deserializer=proto_dot_services__pb2.SystemStatus.FromString,
                 _registered_method=True)
 
 
@@ -809,23 +981,23 @@ def add_LoaderServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'StartService': grpc.unary_unary_rpc_method_handler(
                     servicer.StartService,
-                    request_deserializer=services__pb2.ServiceRequest.FromString,
-                    response_serializer=services__pb2.Status.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.ServiceRequest.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
             ),
             'StopService': grpc.unary_unary_rpc_method_handler(
                     servicer.StopService,
-                    request_deserializer=services__pb2.ServiceRequest.FromString,
-                    response_serializer=services__pb2.Status.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.ServiceRequest.FromString,
+                    response_serializer=proto_dot_services__pb2.Status.SerializeToString,
             ),
             'GetPids': grpc.unary_unary_rpc_method_handler(
                     servicer.GetPids,
-                    request_deserializer=services__pb2.Empty.FromString,
-                    response_serializer=services__pb2.PidsResponse.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.Empty.FromString,
+                    response_serializer=proto_dot_services__pb2.PidsResponse.SerializeToString,
             ),
             'GetStatus': grpc.unary_unary_rpc_method_handler(
                     servicer.GetStatus,
-                    request_deserializer=services__pb2.Empty.FromString,
-                    response_serializer=services__pb2.SystemStatus.SerializeToString,
+                    request_deserializer=proto_dot_services__pb2.Empty.FromString,
+                    response_serializer=proto_dot_services__pb2.SystemStatus.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -854,8 +1026,8 @@ class LoaderService(object):
             request,
             target,
             '/alexa.LoaderService/StartService',
-            services__pb2.ServiceRequest.SerializeToString,
-            services__pb2.Status.FromString,
+            proto_dot_services__pb2.ServiceRequest.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
             options,
             channel_credentials,
             insecure,
@@ -881,8 +1053,8 @@ class LoaderService(object):
             request,
             target,
             '/alexa.LoaderService/StopService',
-            services__pb2.ServiceRequest.SerializeToString,
-            services__pb2.Status.FromString,
+            proto_dot_services__pb2.ServiceRequest.SerializeToString,
+            proto_dot_services__pb2.Status.FromString,
             options,
             channel_credentials,
             insecure,
@@ -908,8 +1080,8 @@ class LoaderService(object):
             request,
             target,
             '/alexa.LoaderService/GetPids',
-            services__pb2.Empty.SerializeToString,
-            services__pb2.PidsResponse.FromString,
+            proto_dot_services__pb2.Empty.SerializeToString,
+            proto_dot_services__pb2.PidsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -935,8 +1107,8 @@ class LoaderService(object):
             request,
             target,
             '/alexa.LoaderService/GetStatus',
-            services__pb2.Empty.SerializeToString,
-            services__pb2.SystemStatus.FromString,
+            proto_dot_services__pb2.Empty.SerializeToString,
+            proto_dot_services__pb2.SystemStatus.FromString,
             options,
             channel_credentials,
             insecure,

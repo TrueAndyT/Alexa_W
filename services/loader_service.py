@@ -16,7 +16,7 @@ from concurrent import futures
 from enum import Enum
 
 # Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from proto import services_pb2, services_pb2_grpc
 from common.base_service import BaseService
@@ -259,11 +259,11 @@ class LoaderService(BaseService):
         
         # Service definitions
         self.services: Dict[str, ServiceInfo] = {
-            'logger': ServiceInfo('logger', 5001, 'services/logger/logger_service.py'),
-            'tts': ServiceInfo('tts', 5006, 'services/tts/tts_service.py'),
-            'llm': ServiceInfo('llm', 5005, 'services/llm/llm_service.py'),
-            'stt': ServiceInfo('stt', 5004, 'services/stt/stt_service.py'),
-            'kwd': ServiceInfo('kwd', 5003, 'services/kwd/kwd_service.py'),
+            'logger': ServiceInfo('logger', 5001, 'services/logger_service.py'),
+            'tts': ServiceInfo('tts', 5006, 'services/tts_service.py'),
+            'llm': ServiceInfo('llm', 5005, 'services/llm_service.py'),
+            'stt': ServiceInfo('stt', 5004, 'services/stt_service.py'),
+            'kwd': ServiceInfo('kwd', 5003, 'services/kwd_service.py'),
         }
         
         # Components
@@ -291,8 +291,8 @@ class LoaderService(BaseService):
     def setup(self):
         """Setup loader service and start services sequentially."""
         try:
-            # Kill any orphaned services before starting
-            self.logger.info("Cleaning up any orphaned services...")
+            # Kill any orphaned services before starting (suppress output until logger is ready)
+            # self.logger.info("Cleaning up any orphaned services...")
             self.kill_orphaned_services()
             
             # Add Loader service to gRPC server
@@ -301,35 +301,37 @@ class LoaderService(BaseService):
                 loader_servicer, self.server
             )
             
-            # Start Ollama server first (needed for LLM)
-            self.logger.info("Starting Ollama server...")
+            # Start Ollama server first (needed for LLM) - suppress output until logger is ready
+            # self.logger.info("Starting Ollama server...")
             if not self.start_ollama_server():
                 raise Exception("Failed to start Ollama server")
             
-            # Pre-load LLM model into VRAM
-            self.logger.info("Pre-loading LLM model (llama3.1:8b-instruct-q4_K_M)...")
+            # Pre-load LLM model into VRAM - suppress output until logger is ready
+            # self.logger.info("Pre-loading LLM model (llama3.1:8b-instruct-q4_K_M)...")
             if not self.preload_llm_model():
                 raise Exception("Failed to pre-load LLM model")
             
-            self.logger.info("Starting services sequentially...")
+            # self.logger.info("Starting services sequentially...")
             
-            # Start logger first (always needed for logging)
-            self.logger.info("[1/5] Starting Logger service...")
-            if not self.start_and_wait_for_service('logger', 5001):
+            # Start logger first (always needed for logging) - suppress output until logger is ready
+            # self.logger.info("[1/5] Starting Logger service...")
+            if not self.start_and_wait_for_service('logger', 5001, suppress_logs=True):
                 raise Exception("Failed to start Logger service")
             
             # Connect to logger for app logging
-            logger_channel = grpc.insecure_channel('127.0.0.1:5001')
+            logger_channel = grpc.insecure_channel('localhost:5001')
             self.logger_stub = services_pb2_grpc.LoggerServiceStub(logger_channel)
             
-            # Log startup
-            self.logger_stub.WriteApp(services_pb2.AppLogRequest(
-                service="loader",
-                event="startup",
-                message="Loader service starting sequential service loading",
-                level="INFO",
-                timestamp_ms=int(time.time() * 1000)
-            ))
+            # Replace the local logger client with logger service client for cleaner console output
+            if self.logger_client:
+                self.logger_client.close()
+            from common.logger_client import LoggerClient
+            self.logger_client = LoggerClient('loader', 5001)
+            
+            # Log loader startup properly
+            import os
+            self.logger_client.info("service_start", f"loader service loaded (PID={os.getpid()}, port={self.port})")
+            self.logger_client.info("phase1_start", "Starting Phase 1")
             
             # Check VRAM before starting services
             # Commented out - test shows all services fit together
@@ -339,35 +341,35 @@ class LoaderService(BaseService):
             # Start services in order: KWD -> STT -> LLM -> TTS
             
             # 1. Start KWD (Keyword Detection)
-            self.logger.info("[2/5] Starting KWD service...")
+            self.logger_client.info("service_start", "Starting KWD service")
             if not self.start_and_wait_for_service('kwd', 5003):
                 raise Exception("Failed to start KWD service")
-            self.kwd_stub = services_pb2_grpc.KwdServiceStub(grpc.insecure_channel('127.0.0.1:5003'))
-            self.logger.info("KWD service ready")
+            self.kwd_stub = services_pb2_grpc.KwdServiceStub(grpc.insecure_channel('localhost:5003'))
+            self.logger_client.info("phase3_ready", f"KWD service loaded (PID={self.services['kwd'].pid}, port=5003)")
             
             # 2. Start STT (Speech-to-Text)
-            self.logger.info("[3/5] Starting STT service (Whisper - uses ~1.5GB VRAM)...")
+            self.logger_client.info("service_start", "Starting STT service")
             if not self.start_and_wait_for_service('stt', 5004, timeout_seconds=30):
                 raise Exception("Failed to start STT service")
-            self.stt_stub = services_pb2_grpc.SttServiceStub(grpc.insecure_channel('127.0.0.1:5004'))
-            self.logger.info("STT service ready")
+            self.stt_stub = services_pb2_grpc.SttServiceStub(grpc.insecure_channel('localhost:5004'))
+            self.logger_client.info("phase2_ready", f"STT service loaded (PID={self.services['stt'].pid}, port=5004)")
             
             # 3. Start LLM (Language Model)
-            self.logger.info("[4/5] Starting LLM service...")
+            self.logger_client.info("service_start", "Starting LLM service")
             if not self.start_and_wait_for_service('llm', 5005):
                 raise Exception("Failed to start LLM service")
-            self.llm_stub = services_pb2_grpc.LlmServiceStub(grpc.insecure_channel('127.0.0.1:5005'))
-            self.logger.info("LLM service ready")
+            self.llm_stub = services_pb2_grpc.LlmServiceStub(grpc.insecure_channel('localhost:5005'))
+            self.logger_client.info("phase1_ready", f"LLM service loaded (PID={self.services['llm'].pid}, port=5005)")
             
             # 4. Start TTS (Text-to-Speech)
-            self.logger.info("[5/5] Starting TTS service (Kokoro)...")
+            self.logger_client.info("service_start", "Starting TTS service")
             if not self.start_and_wait_for_service('tts', 5006, timeout_seconds=30):
                 raise Exception("Failed to start TTS service")
-            self.tts_stub = services_pb2_grpc.TtsServiceStub(grpc.insecure_channel('127.0.0.1:5006'))
-            self.logger.info("TTS service ready")
+            self.tts_stub = services_pb2_grpc.TtsServiceStub(grpc.insecure_channel('localhost:5006'))
+            self.logger_client.info("phase1_ready", f"TTS service loaded (PID={self.services['tts'].pid}, port=5006)")
             
             # All services loaded
-            self.logger.info("All services loaded successfully")
+            self.logger_client.info("warmup_done", "All services loaded successfully")
             
             # Warm-up greeting
             self.play_warmup_greeting()
@@ -377,7 +379,7 @@ class LoaderService(BaseService):
             
             # Enter IDLE state
             self.system_state = SystemState.IDLE
-            self.logger.info("System ready in IDLE state - waiting for wake word")
+            self.logger_client.info("kwd_started", "Waiting for wake word")
             
         except Exception as e:
             self.logger.error(f"Failed to setup loader service: {e}")
@@ -386,13 +388,14 @@ class LoaderService(BaseService):
             self.cleanup()
             raise
             
-    def start_and_wait_for_service(self, name: str, port: int, timeout_seconds: int = 10) -> bool:
+    def start_and_wait_for_service(self, name: str, port: int, timeout_seconds: int = 10, suppress_logs: bool = False) -> bool:
         """Start a service and wait for it to be healthy.
         
         Args:
             name: Service name
             port: Service port
             timeout_seconds: Maximum time to wait for service to be healthy
+            suppress_logs: If True, suppress console output
             
         Returns:
             True if service started and is healthy, False otherwise
@@ -417,14 +420,16 @@ class LoaderService(BaseService):
                 service.health_client = HealthClient(port=port)
             
             # Wait for service to be healthy
-            self.logger.info(f"Waiting for {name} service to be healthy...")
+            if not suppress_logs:
+                self.logger.info(f"Waiting for {name} service to be healthy...")
             deadline = time.time() + timeout_seconds
             
             while time.time() < deadline:
                 status = service.health_client.check()
                 if status == "SERVING":
                     service.health_status = health_pb2.HealthCheckResponse.SERVING
-                    self.logger.info(f"{name} service is SERVING")
+                    if not suppress_logs:
+                        self.logger.info(f"{name} service is SERVING")
                     return True
                 elif status == "NOT_SERVING":
                     service.health_status = health_pb2.HealthCheckResponse.NOT_SERVING
@@ -436,14 +441,8 @@ class LoaderService(BaseService):
             # Timeout reached
             self.logger.error(f"{name} service health check timeout after {timeout_seconds}s")
             
-            # Check the service log for errors
-            log_file = f"{name}_service.log"
-            if Path(log_file).exists():
-                with open(log_file, 'r') as f:
-                    last_lines = f.readlines()[-10:]  # Get last 10 lines
-                    self.logger.error(f"Last lines from {name} log:")
-                    for line in last_lines:
-                        self.logger.error(f"  {line.strip()}")
+            # Service logs are now in centralized app.log
+            self.logger.error(f"Check logs/app.log for {name} service error details")
             
             return False
             
@@ -737,11 +736,12 @@ class LoaderService(BaseService):
         try:
             self.logger.info("Loading LLM model into VRAM (this may take a moment)...")
             
-            # Run a simple query to load the model
+            # Run a simple query to load the model, providing stdin to avoid "bad file descriptor" error
             result = subprocess.run(
                 ["ollama", "run", "llama3.1:8b-instruct-q4_K_M", "hi"],
                 capture_output=True,
                 text=True,
+                stdin=subprocess.DEVNULL,
                 timeout=60
             )
             
@@ -803,12 +803,22 @@ class LoaderService(BaseService):
             # Use virtual environment Python
             venv_python = Path('.venv/bin/python').absolute()
             
-            log_file = f"logs/{name}_service.log"
-            service.process = subprocess.Popen(
-                [str(venv_python), str(script_path)],
-                stdout=open(log_file, 'w'),
-                stderr=subprocess.STDOUT
-            )
+            # Start service process
+            # Logger service output goes to console, others are suppressed
+            if name == 'logger':
+                # Logger service outputs formatted logs to console
+                service.process = subprocess.Popen(
+                    [str(venv_python), str(script_path)],
+                    stdout=None,  # Inherit stdout - logger outputs to console
+                    stderr=subprocess.DEVNULL   # Suppress stderr
+                )
+            else:
+                # Other services use centralized logging only
+                service.process = subprocess.Popen(
+                    [str(venv_python), str(script_path)],
+                    stdout=subprocess.DEVNULL,  # Suppress stdout
+                    stderr=subprocess.DEVNULL   # Suppress stderr
+                )
             
             service.pid = service.process.pid
             

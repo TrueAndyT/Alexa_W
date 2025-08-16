@@ -3,6 +3,9 @@ grpcio==1.74.0
 grpcio-tools==1.74.0
 grpcio-health-checking==1.74.0
 
+# Pin setuptools to avoid pkg_resources deprecation warning
+setuptools==80.1.0
+
 # Configuration and utilities
 pyyaml==6.0.2
 aiofiles==24.1.0
@@ -25,11 +28,11 @@ tqdm==4.67.1
 scikit-learn==1.7.1
 requests==2.32.4
 
-# Speech-to-text (Whisper)
-openai-whisper==20250625
-torch==2.8.0
-torchaudio==2.8.0
-webrtcvad==2.0.10
+# Speech-to-text (Faster-Whisper)
+faster-whisper==1.1.0
+torch==2.8.0  # Still needed for CUDA detection
+ctranslate2>=4.0.0  # Faster-Whisper backend
+av==13.1.0  # For audio processing in Faster-Whisper
 
 # LLM Service
 aiohttp==3.12.15

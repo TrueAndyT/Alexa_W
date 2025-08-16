@@ -11,13 +11,15 @@ from typing import Optional
 import grpc
 
 # Add parent directories to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from proto import services_pb2, services_pb2_grpc
 from common.base_service import BaseService
 from grpc_health.v1 import health_pb2
 from openwakeword.model import Model
+from common.logger_client import LoggerClient
 import logging
+import random
 
 # Suppress openwakeword logs
 logging.getLogger('openwakeword').setLevel(logging.WARNING)
@@ -33,6 +35,20 @@ class KwdServicer(services_pb2_grpc.KwdServiceServicer):
             wake_detector: WakeDetector instance
         """
         self.wake_detector = wake_detector
+    
+    def Configure(self, request, context):
+        """Configure KWD service."""
+        if request.confidence_threshold > 0:
+            self.wake_detector.threshold = request.confidence_threshold
+        if request.cooldown_ms > 0:
+            self.wake_detector.cooldown_ms = request.cooldown_ms
+        if request.yes_phrases:
+            self.wake_detector.yes_phrases = list(request.yes_phrases)
+        
+        return services_pb2.Status(
+            success=True,
+            message="KWD configured"
+        )
     
     def Events(self, request, context):
         """Stream wake word detection events."""
@@ -54,20 +70,20 @@ class KwdServicer(services_pb2_grpc.KwdServiceServicer):
         finally:
             self.wake_detector.logger.info("Client disconnected from Events stream")
     
-    def Enable(self, request, context):
-        """Enable wake word detection."""
-        success = self.wake_detector.enable()
+    def Start(self, request, context):
+        """Start/enable wake word detection."""
+        success = self.wake_detector.start()
         return services_pb2.Status(
             success=success,
-            message="Wake detection enabled" if success else "Failed to enable"
+            message="Wake detection started" if success else "Failed to start"
         )
     
-    def Disable(self, request, context):
-        """Disable wake word detection."""
-        success = self.wake_detector.disable()
+    def Stop(self, request, context):
+        """Stop/disable wake word detection."""
+        success = self.wake_detector.stop()
         return services_pb2.Status(
             success=success,
-            message="Wake detection disabled" if success else "Failed to disable"
+            message="Wake detection stopped" if success else "Failed to stop"
         )
 
 
@@ -90,6 +106,12 @@ class WakeDetector:
         self.cooldown_ms = config.get_int('kwd', 'cooldown_ms', 1000)
         self.sample_rate = 16000  # openWakeWord requires 16kHz
         self.chunk_size = 1280  # 80ms chunks at 16kHz
+        self.yes_phrases = config.get('kwd', 'yes_phrases', 'Yes?;Yes, Master?;Sup?;Yo').split(';')
+        
+        # Service stubs for internal dialog handling
+        self.tts_stub = None
+        self.stt_stub = None
+        self.logger_stub = None
         
         # State
         self.enabled = False
@@ -105,6 +127,9 @@ class WakeDetector:
         # OpenWakeWord model
         self.model = None
         self.wake_word_name = None
+        
+        # Dialog state
+        self.in_dialog = False
         
     def initialize(self) -> bool:
         """Initialize wake word model and audio stream.
@@ -138,6 +163,9 @@ class WakeDetector:
             
             # Start audio capture
             self._start_audio_stream()
+            
+            # Connect to other services
+            self._connect_services()
             
             # Enable detection by default
             self.enabled = True
@@ -206,18 +234,8 @@ class WakeDetector:
                     if score >= self.threshold:
                         self.logger.info(f"Wake word detected: {model_name}, confidence: {score:.3f}")
                         
-                        # Create wake event
-                        event = services_pb2.WakeEvent(
-                            confidence=float(score),
-                            timestamp_ms=int(current_time),
-                            wake_word=self.wake_word_name
-                        )
-                        
-                        # Add to event queue
-                        try:
-                            self.event_queue.put_nowait(event)
-                        except queue.Full:
-                            self.logger.warning("Event queue full, dropping wake event")
+                        # Handle wake detection internally
+                        self._handle_wake_detection(score, current_time)
                         
                         # Update last detection time
                         self.last_detection_time = current_time
@@ -248,14 +266,106 @@ class WakeDetector:
         except queue.Empty:
             return None
     
-    def enable(self) -> bool:
-        """Enable wake word detection.
+    def _connect_services(self):
+        """Connect to other services for dialog handling."""
+        try:
+            import grpc
+            
+            # Connect to TTS service
+            tts_channel = grpc.insecure_channel('localhost:5006')
+            self.tts_stub = services_pb2_grpc.TtsServiceStub(tts_channel)
+            
+            # Connect to STT service
+            stt_channel = grpc.insecure_channel('localhost:5004')
+            self.stt_stub = services_pb2_grpc.SttServiceStub(stt_channel)
+            
+            # Connect to Logger service
+            logger_channel = grpc.insecure_channel('localhost:5001')
+            self.logger_stub = services_pb2_grpc.LoggerServiceStub(logger_channel)
+            
+            self.logger.info("Connected to TTS, STT, and Logger services")
+        except Exception as e:
+            self.logger.warning(f"Failed to connect to services: {e}")
+    
+    def _handle_wake_detection(self, confidence: float, timestamp_ms: int):
+        """Handle wake word detection internally.
+        
+        Args:
+            confidence: Detection confidence score
+            timestamp_ms: Timestamp in milliseconds
+        """
+        try:
+            # Log wake detection
+            if self.logger._log_info:
+                self.logger._log_info("wake_detected", f"Wake word detected with confidence {confidence:.3f}")
+            
+            # 1. Speak random confirmation via TTS
+            if self.tts_stub:
+                yes_phrase = random.choice(self.yes_phrases)
+                self.logger.info(f"Speaking confirmation: {yes_phrase}")
+                
+                speak_response = self.tts_stub.Speak(services_pb2.SpeakRequest(
+                    text=yes_phrase,
+                    dialog_id="",  # Will be set by STT
+                    voice="af_heart"
+                ))
+                
+                if not speak_response.success:
+                    self.logger.error(f"Failed to speak confirmation: {speak_response.message}")
+            
+            # 2. Create new dialog via Logger
+            dialog_id = ""
+            if self.logger_stub:
+                dialog_response = self.logger_stub.NewDialog(services_pb2.NewDialogRequest(
+                    timestamp_ms=timestamp_ms
+                ))
+                dialog_id = dialog_response.dialog_id
+                self.logger.info(f"Created dialog: {dialog_id}")
+            
+            # 3. Start STT with dialog ID
+            if self.stt_stub:
+                start_response = self.stt_stub.Start(services_pb2.StartRequest(
+                    dialog_id=dialog_id,
+                    turn_number=1
+                ))
+                
+                if start_response.success:
+                    self.logger.info("STT started successfully")
+                else:
+                    self.logger.error(f"Failed to start STT: {start_response.message}")
+            
+            # 4. Disable KWD during dialog
+            self.stop()
+            self.in_dialog = True
+            
+            # Create and emit wake event for backward compatibility
+            event = services_pb2.WakeEvent(
+                confidence=float(confidence),
+                timestamp_ms=int(timestamp_ms),
+                wake_word=self.wake_word_name,
+                dialog_id=dialog_id
+            )
+            
+            # Add to event queue
+            try:
+                self.event_queue.put_nowait(event)
+            except queue.Full:
+                self.logger.warning("Event queue full, dropping wake event")
+            
+        except Exception as e:
+            self.logger.error(f"Error handling wake detection: {e}")
+    
+    def start(self) -> bool:
+        """Start/enable wake word detection.
         
         Returns:
             True if successful
         """
         self.enabled = True
-        self.logger.info("Wake detection enabled")
+        self.in_dialog = False
+        
+        if self.logger._log_info:
+            self.logger._log_info("kwd_started", "Wake word detection started")
         
         # Clear any pending events
         while not self.event_queue.empty():
@@ -270,14 +380,17 @@ class WakeDetector:
         
         return True
     
-    def disable(self) -> bool:
-        """Disable wake word detection.
+    def stop(self) -> bool:
+        """Stop/disable wake word detection.
         
         Returns:
             True if successful
         """
         self.enabled = False
-        self.logger.info("Wake detection disabled")
+        
+        if self.logger._log_info:
+            self.logger._log_info("kwd_stopped", "Wake word detection stopped")
+        
         return True
     
     def cleanup(self):

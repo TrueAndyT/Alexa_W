@@ -49,6 +49,7 @@ message DialogLogRequest {
 
 // TTS Service
 service TtsService {
+  rpc Configure(TtsConfig) returns (Status);
   rpc Speak(SpeakRequest) returns (SpeakResponse);
   rpc SpeakStream(stream LlmChunk) returns (SpeakResponse);
   rpc PlaybackEvents(DialogRef) returns (stream PlaybackEvent);
@@ -81,6 +82,7 @@ message PlaybackEvent {
 
 // LLM Service
 service LlmService {
+  rpc Configure(LlmConfig) returns (Status);
   rpc Complete(CompleteRequest) returns (stream CompleteResponse);
 }
 
@@ -100,6 +102,7 @@ message CompleteResponse {
 
 // STT Service
 service SttService {
+  rpc Configure(SttConfig) returns (Status);
   rpc Start(StartRequest) returns (Status);
   rpc Stop(StopRequest) returns (Status);
   rpc Results(DialogRef) returns (stream SttResult);
@@ -124,9 +127,10 @@ message SttResult {
 
 // KWD Service
 service KwdService {
+  rpc Configure(KwdConfig) returns (Status);
+  rpc Start(Empty) returns (Status);
+  rpc Stop(Empty) returns (Status);
   rpc Events(Empty) returns (stream WakeEvent);
-  rpc Enable(Empty) returns (Status);
-  rpc Disable(Empty) returns (Status);
 }
 
 message WakeEvent {
@@ -157,4 +161,29 @@ message SystemStatus {
   map<string, string> service_health = 2;
   int64 vram_used_mb = 3;
   int64 uptime_ms = 4;
+}
+
+// Configuration messages
+message KwdConfig {
+  float confidence_threshold = 1;
+  int32 cooldown_ms = 2;
+  repeated string yes_phrases = 3;
+}
+
+message SttConfig {
+  string language = 1;
+  int32 vad_silence_ms = 2;
+  bool aec_enabled = 3;
+}
+
+message LlmConfig {
+  string model = 1;
+  int32 max_tokens = 2;
+  float temperature = 3;
+}
+
+message TtsConfig {
+  string voice = 1;
+  int32 sample_rate = 2;
+  float speed = 3;
 }

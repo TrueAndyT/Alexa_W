@@ -1,4 +1,5 @@
 """Base service class with health check implementation."""
+import os
 import grpc
 from concurrent import futures
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
@@ -13,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from common.config_loader import ConfigLoader
+from common.logger_client import LoggerClient
 
 
 class BaseService:
@@ -29,19 +31,25 @@ class BaseService:
         self.config = ConfigLoader(config_path)
         self.port = self.config.get_int(service_name, 'port')
         
-        # Setup logging
-        self.logger = logging.getLogger(service_name)
-        self.logger.setLevel(logging.INFO)
-        
-        # Console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-        formatter = logging.Formatter(
-            f'[{service_name}] %(asctime)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        console_handler.setFormatter(formatter)
-        self.logger.addHandler(console_handler)
+        # Setup logging - use centralized logger for all services except logger itself
+        if service_name == 'logger':
+            # Logger service uses local logging to avoid circular dependency
+            self.logger = logging.getLogger(service_name)
+            self.logger.setLevel(logging.DEBUG)
+            self.logger.handlers = []
+            
+            # No console handler - logger service will handle its own console output
+            self.logger_client = None
+        else:
+            # All other services use centralized logger
+            self.logger_client = LoggerClient(service_name)
+            
+            # Create a wrapper logger that sends to centralized service
+            self.logger = logging.getLogger(service_name)
+            self.logger.setLevel(logging.DEBUG)
+            self.logger.handlers = []
+            
+            # No console handler - all output goes through logger service
         
         # gRPC server setup
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
@@ -59,6 +67,32 @@ class BaseService:
         
         self.running = False
     
+    def console_log(self, message):
+        """Log important message to console (always shown)."""
+        # Suppress all direct console output - logger service will handle formatted output
+        pass
+    
+    def _log_info(self, event: str, message: str = None, details: str = None):
+        """Log info to centralized logger."""
+        if self.logger_client:
+            self.logger_client.info(event, message, details)
+        else:
+            self.logger.info(f"{event}: {message if message else details or event}")
+    
+    def _log_error(self, event: str, message: str = None, details: str = None):
+        """Log error to centralized logger."""
+        if self.logger_client:
+            self.logger_client.error(event, message, details)
+        else:
+            self.logger.error(f"{event}: {message if message else details or event}")
+    
+    def _log_warn(self, event: str, message: str = None, details: str = None):
+        """Log warning to centralized logger."""
+        if self.logger_client:
+            self.logger_client.warn(event, message, details)
+        else:
+            self.logger.warning(f"{event}: {message if message else details or event}")
+    
     def set_health_status(self, status):
         """Set service health status.
         
@@ -68,13 +102,15 @@ class BaseService:
         self.health_servicer.set("", status)
         self.health_servicer.set(self.service_name, status)
         
-        status_name = {
-            health_pb2.HealthCheckResponse.SERVING: "SERVING",
-            health_pb2.HealthCheckResponse.NOT_SERVING: "NOT_SERVING",
-            health_pb2.HealthCheckResponse.UNKNOWN: "UNKNOWN"
-        }.get(status, "UNKNOWN")
-        
-        self.logger.info(f"Health status changed to: {status_name}")
+        # Don't log health status for non-logger services to avoid console noise
+        # Health status is monitored by the loader service anyway
+        if self.service_name == 'logger':
+            status_name = {
+                health_pb2.HealthCheckResponse.SERVING: "SERVING",
+                health_pb2.HealthCheckResponse.NOT_SERVING: "NOT_SERVING",
+                health_pb2.HealthCheckResponse.UNKNOWN: "UNKNOWN"
+            }.get(status, "UNKNOWN")
+            self._log_info("health", f"Health status changed to: {status_name}")
     
     def setup(self):
         """Setup service-specific initialization. Override in subclasses."""
@@ -88,15 +124,21 @@ class BaseService:
         """Start the gRPC service."""
         try:
             # Service-specific setup
-            self.logger.info(f"Starting {self.service_name} service...")
+            # Suppress all direct console messages
+            # Don't log service_start for loader - it will log after connecting to logger service
+            if self.service_name != 'loader':
+                self._log_info("service_start", details=self.service_name)
             self.setup()
             
             # Bind to localhost only for security
-            self.server.add_insecure_port(f'127.0.0.1:{self.port}')
+            self.server.add_insecure_port(f'localhost:{self.port}')
             self.server.start()
             self.running = True
             
-            self.logger.info(f"{self.service_name} service started on port {self.port}")
+            # Suppress all direct console messages
+            # Send proper event to logger for all services
+            if self.service_name != 'loader':  # Loader will log this itself after logger is ready
+                self._log_info("service_start", f"{self.service_name} service loaded (PID={os.getpid()}, port={self.port})")
             
             # Set health to SERVING after successful start
             self.set_health_status(health_pb2.HealthCheckResponse.SERVING)
@@ -106,7 +148,7 @@ class BaseService:
                 time.sleep(1)
                 
         except Exception as e:
-            self.logger.error(f"Failed to start service: {e}")
+            self._log_error("service_error", details=str(e))
             self.set_health_status(health_pb2.HealthCheckResponse.NOT_SERVING)
             raise
         finally:
@@ -115,7 +157,10 @@ class BaseService:
     def stop(self):
         """Stop the gRPC service."""
         if self.running:
-            self.logger.info(f"Stopping {self.service_name} service...")
+            # Suppress all direct console messages
+            # Don't log service_stop for loader if logger isn't connected
+            if self.service_name != 'loader':
+                self._log_info("service_stop", details=self.service_name)
             self.running = False
             
             # Set health to NOT_SERVING
@@ -126,9 +171,18 @@ class BaseService:
             
             # Stop gRPC server
             self.server.stop(grace=5)
-            self.logger.info(f"{self.service_name} service stopped")
+            # Suppress all direct console messages
+            if self.service_name != 'loader':
+                self._log_info("service_stop", f"{self.service_name} service stopped")
+            
+            # Close logger client connection
+            if self.logger_client:
+                self.logger_client.close()
     
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals."""
-        self.logger.info(f"Received signal {signum}, shutting down...")
+        # Suppress all direct console messages
+        # Don't log signals for loader - it has its own handling
+        if self.service_name != 'loader':
+            self._log_info("signal", f"Received signal {signum}, shutting down")
         self.running = False

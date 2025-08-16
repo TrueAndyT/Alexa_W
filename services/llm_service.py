@@ -12,7 +12,7 @@ import logging
 from concurrent import futures
 
 # Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from proto import services_pb2, services_pb2_grpc
 from common.base_service import BaseService
@@ -134,6 +134,22 @@ class LLMServicer(services_pb2_grpc.LlmServiceServicer):
         return """You are a helpful voice assistant called Alexa. You provide concise, 
         friendly responses suitable for spoken conversation. Keep your answers brief 
         and natural-sounding, as they will be converted to speech."""
+    
+    def Configure(self, request, context):
+        """Configure LLM service."""
+        if request.model:
+            self.model = request.model
+        if request.max_tokens > 0:
+            # Update max_tokens in ollama options if needed
+            pass
+        if request.temperature > 0:
+            # Update temperature in ollama options if needed
+            pass
+        
+        return services_pb2.Status(
+            success=True,
+            message="LLM configured"
+        )
         
     def Complete(self, request, context):
         """Stream completion response."""
@@ -146,16 +162,17 @@ class LLMServicer(services_pb2_grpc.LlmServiceServicer):
         self.logger.info(f"[MESSAGE RECEIVED] Dialog: {dialog_id}, Turn: {turn_number}, Time: {received_time:.3f}")
         self.logger.info(f"[USER TEXT] {user_text}")
         
-        # Log user input to logger service
-        try:
-            self.logger_stub.WriteDialog(services_pb2.DialogLogRequest(
-                dialog_id=dialog_id,
-                speaker="USER",
-                text=user_text,
-                timestamp_ms=int(time.time() * 1000)
-            ))
-        except Exception as e:
-            self.logger.error(f"Failed to log user input: {e}")
+        # Log user input to logger service (if available)
+        if self.logger_stub:
+            try:
+                self.logger_stub.WriteDialog(services_pb2.DialogLogRequest(
+                    dialog_id=dialog_id,
+                    speaker="USER",
+                    text=user_text,
+                    timestamp_ms=int(time.time() * 1000)
+                ))
+            except Exception as e:
+                self.logger.error(f"Failed to log user input: {e}")
         
         # Track timing for first token latency
         start_time = time.time()
@@ -272,17 +289,19 @@ class LLMServicer(services_pb2_grpc.LlmServiceServicer):
             full_text = ''.join(full_response)
             end_time = time.time()
             total_time = (end_time - start_time) * 1000
-            try:
-                self.logger_stub.WriteDialog(services_pb2.DialogLogRequest(
-                    dialog_id=dialog_id,
-                    speaker="ASSISTANT",
-                    text=full_text,
-                    timestamp_ms=int(time.time() * 1000)
-                ))
-                self.logger.info(f"[RESPONSE COMPLETE] Dialog: {dialog_id}, Length: {len(full_text)} chars, Total time: {total_time:.0f}ms")
-                self.logger.info(f"[ASSISTANT TEXT] {full_text[:200]}..." if len(full_text) > 200 else f"[ASSISTANT TEXT] {full_text}")
-            except Exception as e:
-                self.logger.error(f"Failed to log assistant response: {e}")
+            if self.logger_stub:
+                try:
+                    self.logger_stub.WriteDialog(services_pb2.DialogLogRequest(
+                        dialog_id=dialog_id,
+                        speaker="ASSISTANT",
+                        text=full_text,
+                        timestamp_ms=int(time.time() * 1000)
+                    ))
+                except Exception as e:
+                    self.logger.error(f"Failed to log assistant response: {e}")
+            
+            self.logger.info(f"[RESPONSE COMPLETE] Dialog: {dialog_id}, Length: {len(full_text)} chars, Total time: {total_time:.0f}ms")
+            self.logger.info(f"[ASSISTANT TEXT] {full_text[:200]}..." if len(full_text) > 200 else f"[ASSISTANT TEXT] {full_text}")
                 
         except Exception as e:
             self.logger.error(f"Error in Complete: {e}")
@@ -302,19 +321,23 @@ class LLMService(BaseService):
     def setup(self):
         """Setup LLM service."""
         try:
-            # Connect to logger service
-            self.logger.info("Connecting to Logger service...")
-            self.logger_channel = grpc.insecure_channel('127.0.0.1:5001')
-            self.logger_stub = services_pb2_grpc.LoggerServiceStub(self.logger_channel)
-            
-            # Log startup
-            self.logger_stub.WriteApp(services_pb2.AppLogRequest(
-                service="llm",
-                event="startup",
-                message="LLM service starting",
-                level="INFO",
-                timestamp_ms=int(time.time() * 1000)
-            ))
+            # Try to connect to logger service (optional)
+            try:
+                self.logger.info("Connecting to Logger service...")
+                self.logger_channel = grpc.insecure_channel('localhost:5001')
+                self.logger_stub = services_pb2_grpc.LoggerServiceStub(self.logger_channel)
+                
+                # Log startup
+                self.logger_stub.WriteApp(services_pb2.AppLogRequest(
+                    service="llm",
+                    event="startup",
+                    message="LLM service starting",
+                    level="INFO",
+                    timestamp_ms=int(time.time() * 1000)
+                ))
+            except Exception as e:
+                self.logger.warning(f"Logger service not available: {e}")
+                self.logger_stub = None
             
             # Add LLM service to gRPC server
             self.logger.info("Creating LLMServicer...")
